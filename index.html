@@ -126,6 +126,9 @@
             <button onclick="switchTab('minigame')" id="nav-minigame" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-transparent hover:border-dark hover:bg-pastel-pink hover:shadow-brutal transition-all font-bold text-left">
                 <span class="text-xl w-6">🎮</span> Minigame
             </button>
+            <button onclick="switchTab('hsktest')" id="nav-hsktest" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-transparent hover:border-dark hover:bg-pastel-mint hover:shadow-brutal transition-all font-bold text-left">
+                <span class="text-xl w-6">📝</span> Luyện thi HSK
+            </button>
             <button onclick="switchTab('myspace')" id="nav-myspace" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-transparent hover:border-dark hover:bg-white hover:shadow-brutal transition-all font-bold text-left">
                 <span class="text-xl w-6">✨</span> Góc của tôi
             </button>
@@ -175,6 +178,7 @@
         <button onclick="switchTab('flashcards')" class="text-xl p-2 hover:bg-pastel-purple border-2 border-transparent rounded-xl"><i class="fa-solid fa-layer-group"></i></button>
         <button onclick="switchTab('dictionary')" class="text-xl p-2 hover:bg-pastel-blue border-2 border-transparent rounded-xl"><i class="fa-solid fa-book"></i></button>
         <button onclick="switchTab('minigame')" class="text-xl p-2 hover:bg-pastel-pink border-2 border-transparent rounded-xl"><i class="fa-solid fa-gamepad"></i></button>
+        <button onclick="switchTab('hsktest')" class="text-xl p-2 hover:bg-pastel-mint border-2 border-transparent rounded-xl"><i class="fa-solid fa-file-pen"></i></button>
         <button onclick="switchTab('myspace')" class="text-xl p-2 hover:bg-white border-2 border-transparent rounded-xl"><i class="fa-solid fa-star"></i></button>
         <button onclick="switchTab('leaderboard')" class="text-xl p-2 hover:bg-pastel-red border-2 border-transparent rounded-xl"><i class="fa-solid fa-trophy"></i></button>
     </div>
@@ -458,6 +462,26 @@
                         </div>
                     </div>
                 </div>
+            </section>
+
+            <!-- 6b. LUYỆN THI HSK -->
+            <section id="tab-hsktest" class="tab-content hidden animate-fade-in">
+                <header class="mb-6 text-center">
+                    <h2 class="text-3xl md:text-4xl font-extrabold mb-2">Luyện Thi HSK 📝</h2>
+                    <p class="font-bold text-slate-600 max-w-2xl mx-auto">Đề thi thử rút gọn, mô phỏng đúng cấu trúc &amp; nhịp độ thời gian của đề thi HSK thật. Làm xong, AI Tiểu Hưng sẽ phân tích lỗ hổng Từ vựng/Ngữ pháp và tự tạo Flashcard ôn lại cho bạn!</p>
+                </header>
+
+                <div id="hsktest-intro" class="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+
+                <div id="hsktest-exam" class="hidden max-w-2xl mx-auto bg-white border-4 border-dark rounded-3xl shadow-brutal p-6">
+                    <div class="flex justify-between items-center mb-5">
+                        <span id="hsktest-progress" class="font-extrabold bg-pastel-blue border-2 border-dark px-3 py-1 rounded-xl text-sm">Câu 1/5</span>
+                        <span id="hsktest-timer" class="font-extrabold bg-pastel-red border-2 border-dark px-3 py-1 rounded-xl text-sm">00:00</span>
+                    </div>
+                    <div id="hsktest-qbox"></div>
+                </div>
+
+                <div id="hsktest-report" class="hidden max-w-2xl mx-auto bg-white border-4 border-dark rounded-3xl shadow-brutal p-6"></div>
             </section>
 
             <!-- 7. GÓC CỦA TÔI -->
@@ -1200,7 +1224,7 @@
             if(activeDesktop) {
                 activeDesktop.classList.remove('border-transparent');
                 activeDesktop.classList.add('border-dark', 'shadow-brutal');
-                const colors = { home:'bg-pastel-yellow', fund:'bg-pastel-orange', skills:'bg-pastel-mint', flashcards:'bg-pastel-purple', dictionary:'bg-pastel-blue', minigame:'bg-pastel-pink', myspace:'bg-white', leaderboard:'bg-pastel-red' };
+                const colors = { home:'bg-pastel-yellow', fund:'bg-pastel-orange', skills:'bg-pastel-mint', flashcards:'bg-pastel-purple', dictionary:'bg-pastel-blue', minigame:'bg-pastel-pink', hsktest:'bg-pastel-mint', myspace:'bg-white', leaderboard:'bg-pastel-red' };
                 activeDesktop.classList.add(colors[tabId]);
             }
 
@@ -1209,6 +1233,7 @@
             if(tabId === 'skills' && !document.querySelector('.skill-section.block')) switchSkillTab('nghe');
             if(tabId === 'flashcards' && !window.fcInit) { filterFC('all'); window.fcInit = true; }
             if(tabId === 'minigame' && !window.gameInit) { initGame(); window.gameInit = true; }
+            if(tabId === 'hsktest' && !window.hskTestInit) { renderHskTestIntro(); window.hskTestInit = true; }
             if(tabId === 'myspace') { renderVocab(); renderGrammar(); }
             if(tabId === 'leaderboard') renderLeaderboard();
         }
@@ -1695,6 +1720,252 @@
             btn.innerText = '⏹️ Dừng hát';
         }
 
+        // --- 6c. LUYỆN THI HSK (format chuẩn + AI Tiểu Hưng phân tích lỗi) ---
+        const HSK_TEST_FORMAT = {
+            1: { sections: [{n:'Nghe',c:20,m:15},{n:'Đọc',c:20,m:17}] },
+            2: { sections: [{n:'Nghe',c:35,m:25},{n:'Đọc',c:25,m:22}] },
+            3: { sections: [{n:'Nghe',c:40,m:35},{n:'Đọc',c:30,m:30},{n:'Viết',c:10,m:15}] },
+            4: { sections: [{n:'Nghe',c:45,m:30},{n:'Đọc',c:40,m:40},{n:'Viết',c:15,m:25}] },
+            5: { sections: [{n:'Nghe',c:45,m:30},{n:'Đọc',c:45,m:45},{n:'Viết',c:10,m:40}] },
+            6: { sections: [{n:'Nghe',c:50,m:35},{n:'Đọc',c:50,m:50},{n:'Viết',c:1,m:45}] },
+        };
+        const HSK_TEST_BANK = {
+            1: [
+                {section:'Nghe', skill:'vocab', audio:'你好，我叫王明。', q:'Người nói trong câu vừa nghe tên là gì?', options:['Vương Minh','Lý Minh','Trương Minh','Vương Lệ'], answer:0, card:{hanzi:'叫', mean:'gọi, tên là'}, en:{q:"What is the speaker's name?", options:['Wang Ming','Li Ming','Zhang Ming','Wang Li']}},
+                {section:'Nghe', skill:'grammar', audio:'我不喜欢喝咖啡。', q:'Ý nghĩa câu vừa nghe là gì?', options:['Tôi thích uống cà phê','Tôi không thích uống cà phê','Tôi thích uống trà','Tôi không uống nước'], answer:1, card:{hanzi:'不喜欢', mean:'không thích'}, en:{q:'What does the sentence mean?', options:['I like coffee','I do not like coffee','I like tea','I do not drink water']}},
+                {section:'Đọc', skill:'vocab', q:'「谢谢」có nghĩa là gì?', options:['Xin chào','Cảm ơn','Tạm biệt','Xin lỗi'], answer:1, card:{hanzi:'谢谢', mean:'cảm ơn'}, en:{q:'What does "谢谢" mean?', options:['Hello','Thank you','Goodbye','Sorry']}},
+                {section:'Đọc', skill:'grammar', q:'Chọn từ đúng điền vào chỗ trống: 我 ___ 学生。', options:['是','在','有','不'], answer:0, card:{hanzi:'是', mean:'là (động từ phán đoán)'}, en:{q:'Choose the correct word: 我 ___ 学生。', options:['是','在','有','不']}},
+                {section:'Đọc', skill:'vocab', q:'「大」trái nghĩa với từ nào?', options:['小','多','好','高'], answer:0, card:{hanzi:'大 ↔ 小', mean:'to ↔ nhỏ'}, en:{q:'Which word is the opposite of "大"?', options:['小','多','好','高']}},
+                {section:'Nghe', skill:'vocab', audio:'她是我的妈妈。', q:'Câu nghe được nói về ai?', options:['Bố của tôi','Mẹ của tôi','Bạn của tôi','Thầy giáo của tôi'], answer:1, card:{hanzi:'妈妈', mean:'mẹ'}, en:{q:'Who is the sentence about?', options:['My father','My mother','My friend','My teacher']}},
+                {section:'Đọc', skill:'vocab', q:'「多少钱」thường dùng để hỏi điều gì?', options:['Hỏi giờ','Hỏi giá tiền','Hỏi tên','Hỏi đường'], answer:1, card:{hanzi:'多少钱', mean:'bao nhiêu tiền'}, en:{q:'What is "多少钱" used to ask?', options:['The time','The price','The name','Directions']}},
+                {section:'Đọc', skill:'grammar', q:'Chọn từ đúng: 现在 ___ 点？', options:['几','多','谁','哪'], answer:0, card:{hanzi:'几点', mean:'mấy giờ'}, en:{q:'Choose the correct word: 现在 ___ 点？', options:['几','多','谁','哪']}},
+            ],
+            2: [
+                {section:'Nghe', skill:'vocab', audio:'今天天气很冷，你要多穿衣服。', q:'Người nói khuyên điều gì?', options:['Mặc thêm áo vì trời lạnh','Uống nước nóng','Ở nhà vì trời mưa','Mang ô vì trời mưa'], answer:0, card:{hanzi:'穿', mean:'mặc (quần áo)'}, en:{q:'What does the speaker advise?', options:["Wear more clothes, it's cold",'Drink hot water','Stay home, it rains','Bring an umbrella']}},
+                {section:'Nghe', skill:'grammar', audio:'他已经做完作业了。', q:'Bài tập hiện tại ở trạng thái nào?', options:['Chưa làm','Đang làm','Đã làm xong','Sẽ làm'], answer:2, card:{hanzi:'已经...了', mean:'đã... rồi (hoàn thành)'}, en:{q:'What is the current state of the homework?', options:['Not started','In progress','Already finished','Will do later']}},
+                {section:'Đọc', skill:'grammar', q:'Chọn đáp án đúng: 他比我 ___ 高。', options:['很','更','最','太'], answer:1, card:{hanzi:'更', mean:'hơn (so sánh)'}, en:{q:'Choose the correct answer: 他比我 ___ 高。', options:['很','更','最','太']}},
+                {section:'Đọc', skill:'vocab', q:'「附近」có nghĩa là gì?', options:['Xa xôi','Gần đây','Bên trong','Phía sau'], answer:1, card:{hanzi:'附近', mean:'gần đây, lân cận'}, en:{q:'What does "附近" mean?', options:['Far away','Nearby','Inside','Behind']}},
+                {section:'Đọc', skill:'grammar', q:'Câu nào đúng ngữ pháp?', options:['我去了昨天北京。','我昨天去了北京。','我昨天北京去了。','昨天我北京去了。'], answer:1, card:{hanzi:'S+Tgian+V', mean:'trạng ngữ thời gian đứng trước động từ'}, en:{q:'Which sentence is grammatically correct?', options:['我去了昨天北京。','我昨天去了北京。','我昨天北京去了。','昨天我北京去了。']}},
+                {section:'Nghe', skill:'grammar', audio:'我把作业做完了。', q:'Câu này dùng cấu trúc gì?', options:['把 + tân ngữ + động từ','Bị động 被','So sánh 比','Nghi vấn 吗'], answer:0, card:{hanzi:'把', mean:'đem, lấy (cấu trúc 把)'}, en:{q:'What structure is used here?', options:['把 + object + verb','Passive 被','Comparison 比','Question 吗']}},
+                {section:'Đọc', skill:'vocab', q:'「方便」nghĩa là gì?', options:['Khó khăn','Thuận tiện','Nguy hiểm','Tốn kém'], answer:1, card:{hanzi:'方便', mean:'thuận tiện'}, en:{q:'What does "方便" mean?', options:['Difficult','Convenient','Dangerous','Expensive']}},
+                {section:'Đọc', skill:'grammar', q:'Chọn đáp án đúng: 你 ___ 过北京吗？', options:['去','了','着','过'], answer:3, card:{hanzi:'过', mean:'đã từng (trợ từ kinh nghiệm)'}, en:{q:'Choose the correct answer: 你 ___ 过北京吗？', options:['去','了','着','过']}},
+            ],
+            3: [
+                {section:'Nghe', skill:'vocab', audio:'虽然下雨了，但是我们还是决定去爬山。', q:'Dù trời mưa, họ vẫn quyết định làm gì?', options:['Ở nhà','Đi leo núi','Đi xem phim','Đi mua sắm'], answer:1, card:{hanzi:'虽然...但是...', mean:'tuy...nhưng...'}, en:{q:'Despite the rain, what did they decide to do?', options:['Stay home','Go hiking','Watch a movie','Go shopping']}},
+                {section:'Nghe', skill:'grammar', audio:'要是我有时间，我就去旅游。', q:'Câu vừa nghe diễn tả điều gì?', options:['Một điều kiện giả định','Một mệnh lệnh','Một lời mời','Một lời xin lỗi'], answer:0, card:{hanzi:'要是...就...', mean:'nếu...thì... (giả định)'}, en:{q:'What does the sentence express?', options:['A hypothetical condition','A command','An invitation','An apology']}},
+                {section:'Đọc', skill:'vocab', q:'「提高」có nghĩa là gì?', options:['Giảm xuống','Nâng cao','Giữ nguyên','Thay đổi'], answer:1, card:{hanzi:'提高', mean:'nâng cao'}, en:{q:'What does "提高" mean?', options:['Decrease','Raise/improve','Keep unchanged','Change']}},
+                {section:'Viết', skill:'grammar', q:'Sắp xếp đúng thứ tự thành câu: 1.我们 2.应该 3.环境 4.保护', options:['1-2-4-3','1-2-3-4','2-1-4-3','1-4-2-3'], answer:0, card:{hanzi:'应该', mean:'nên, cần phải'}, en:{q:'Put in correct order: 1.我们 2.应该 3.环境 4.保护', options:['1-2-4-3','1-2-3-4','2-1-4-3','1-4-2-3']}},
+                {section:'Đọc', skill:'grammar', q:'Chọn từ nối đúng: 他不但聪明，___也很努力。', options:['而且','但是','所以','因为'], answer:0, card:{hanzi:'不但...而且...', mean:'không những...mà còn...'}, en:{q:'Choose the correct connector: 他不但聪明，___也很努力。', options:['而且','但是','所以','因为']}},
+                {section:'Nghe', skill:'vocab', audio:'这个消息让我感到非常惊讶。', q:'Tin tức đó khiến người nói cảm thấy thế nào?', options:['Vui mừng','Ngạc nhiên','Buồn bã','Tức giận'], answer:1, card:{hanzi:'惊讶', mean:'ngạc nhiên'}, en:{q:'How did the news make the speaker feel?', options:['Happy','Surprised','Sad','Angry']}},
+                {section:'Đọc', skill:'grammar', q:'Chọn từ đúng: 她 ___ 漂亮，___ 聪明。', options:['又...又...','一...就...','越...越...','先...再...'], answer:0, card:{hanzi:'又...又...', mean:'vừa...vừa...'}, en:{q:'Choose the correct words: 她 ___ 漂亮，___ 聪明。', options:['又...又...','一...就...','越...越...','先...再...']}},
+                {section:'Viết', skill:'grammar', q:'Sắp xếp đúng: 1.他 2.认真地 3.完成了 4.作业', options:['1-2-3-4','1-3-2-4','2-1-3-4','1-4-2-3'], answer:0, card:{hanzi:'认真地', mean:'một cách nghiêm túc, cẩn thận'}, en:{q:'Put in correct order: 1.他 2.认真地 3.完成了 4.作业', options:['1-2-3-4','1-3-2-4','2-1-3-4','1-4-2-3']}},
+            ],
+            4: [
+                {section:'Nghe', skill:'grammar', audio:'除非你努力学习，否则很难通过考试。', q:'Câu vừa nghe thể hiện quan hệ gì?', options:['Điều kiện phủ định (trừ khi)','Nhân quả','Tương phản','Song song'], answer:0, card:{hanzi:'除非...否则...', mean:'trừ khi...nếu không thì...'}, en:{q:'What relationship does the sentence show?', options:['Negative condition (unless)','Cause-effect','Contrast','Parallel']}},
+                {section:'Nghe', skill:'vocab', audio:'这家公司的产品质量非常可靠。', q:'Người nói đánh giá sản phẩm thế nào?', options:['Kém chất lượng','Đáng tin cậy','Giá rẻ','Mẫu mã đẹp'], answer:1, card:{hanzi:'可靠', mean:'đáng tin cậy'}, en:{q:'How does the speaker rate the product?', options:['Poor quality','Reliable','Cheap','Nice-looking']}},
+                {section:'Đọc', skill:'vocab', q:'「犹豫」gần nghĩa nhất với từ nào?', options:['Quyết đoán','Do dự','Vui vẻ','Tức giận'], answer:1, card:{hanzi:'犹豫', mean:'do dự'}, en:{q:'What is closest in meaning to "犹豫"?', options:['Decisive','Hesitant','Happy','Angry']}},
+                {section:'Viết', skill:'grammar', q:'Sắp xếp đúng thứ tự: 1.经济 2.发展 3.得 4.很快', options:['1-2-3-4','2-1-3-4','1-3-2-4','4-1-2-3'], answer:0, card:{hanzi:'V 得 Adj', mean:'bổ ngữ trình độ (làm... một cách...)'}, en:{q:'Put in correct order: 1.经济 2.发展 3.得 4.很快', options:['1-2-3-4','2-1-3-4','1-3-2-4','4-1-2-3']}},
+                {section:'Đọc', skill:'grammar', q:'Chọn đáp án đúng: 他 ___ 完成任务，就立刻休息了。', options:['一...就...','不但...而且...','虽然...但是...','因为...所以...'], answer:0, card:{hanzi:'一...就...', mean:'vừa...thì... (liền)'}, en:{q:'Choose the correct answer: 他 ___ 完成任务，就立刻休息了。', options:['一...就...','不但...而且...','虽然...但是...','因为...所以...']}},
+                {section:'Nghe', skill:'grammar', audio:'无论遇到什么困难，他都坚持了下来。', q:'Câu này thể hiện quan hệ gì?', options:['Vô điều kiện (无论...都...)','Nguyên nhân','Mục đích','So sánh'], answer:0, card:{hanzi:'无论...都...', mean:'dù...đều... (bất kể điều kiện nào)'}, en:{q:'What relationship does this sentence show?', options:['Unconditional (无论...都...)','Cause','Purpose','Comparison']}},
+                {section:'Đọc', skill:'vocab', q:'「坚持」nghĩa gần nhất là gì?', options:['Từ bỏ','Kiên trì','Nghỉ ngơi','Do dự'], answer:1, card:{hanzi:'坚持', mean:'kiên trì'}, en:{q:'What is closest in meaning to "坚持"?', options:['Give up','Persist','Rest','Hesitate']}},
+                {section:'Đọc', skill:'grammar', q:'Chọn đáp án đúng: 这件事 ___ 他负责。', options:['由','对','跟','向'], answer:0, card:{hanzi:'由', mean:'do, bởi (người phụ trách)'}, en:{q:'Choose the correct answer: 这件事 ___ 他负责。', options:['由','对','跟','向']}},
+            ],
+            5: [
+                {section:'Nghe', skill:'grammar', audio:'这次活动不仅提高了大家的积极性，还增强了团队合作精神。', q:'Hoạt động này mang lại mấy lợi ích được nhắc tới?', options:['Một','Hai','Ba','Không có'], answer:1, card:{hanzi:'不仅...还...', mean:'không chỉ...mà còn...'}, en:{q:'How many benefits are mentioned?', options:['One','Two','Three','None']}},
+                {section:'Nghe', skill:'vocab', audio:'他对这个方案表示强烈反对。', q:'Thái độ của anh ấy với phương án là gì?', options:['Ủng hộ mạnh mẽ','Phản đối mạnh mẽ','Trung lập','Chưa quyết định'], answer:1, card:{hanzi:'反对', mean:'phản đối'}, en:{q:"What is his attitude toward the proposal?", options:['Strongly support','Strongly oppose','Neutral','Undecided']}},
+                {section:'Đọc', skill:'vocab', q:'「权衡利弊」nghĩa gần nhất là gì?', options:['Bỏ qua rủi ro','Cân nhắc được mất','Từ chối quyết định','Chấp nhận mọi rủi ro'], answer:1, card:{hanzi:'权衡利弊', mean:'cân nhắc được mất'}, en:{q:'What is closest in meaning to "权衡利弊"?', options:['Ignore risks','Weigh pros and cons','Refuse to decide','Accept all risks']}},
+                {section:'Viết', skill:'grammar', q:'Sắp xếp đúng thứ tự: 1.随着 2.经济的发展 3.生活水平 4.不断提高', options:['1-2-3-4','2-1-3-4','1-3-2-4','3-1-2-4'], answer:0, card:{hanzi:'随着', mean:'theo cùng với (sự phát triển của)'}, en:{q:'Put in correct order: 1.随着 2.经济的发展 3.生活水平 4.不断提高', options:['1-2-3-4','2-1-3-4','1-3-2-4','3-1-2-4']}},
+                {section:'Đọc', skill:'grammar', q:'Chọn từ đúng: 他 ___ 失败了很多次，但从未放弃。', options:['尽管','由于','除了','按照'], answer:0, card:{hanzi:'尽管...但...', mean:'mặc dù...nhưng...'}, en:{q:'Choose the correct word: 他 ___ 失败了很多次，但从未放弃。', options:['尽管','由于','除了','按照']}},
+                {section:'Nghe', skill:'vocab', audio:'这个项目的前景十分乐观。', q:'Người nói đánh giá triển vọng dự án thế nào?', options:['Rất bi quan','Rất lạc quan','Không rõ ràng','Bình thường'], answer:1, card:{hanzi:'乐观', mean:'lạc quan'}, en:{q:"How does the speaker assess the project's prospects?", options:['Very pessimistic','Very optimistic','Unclear','Average']}},
+                {section:'Đọc', skill:'grammar', q:'Chọn từ đúng: ___ 他多次提醒，大家还是忘了。', options:['尽管','按照','鉴于','以至于'], answer:0, card:{hanzi:'尽管', mean:'mặc dù'}, en:{q:'Choose the correct word: ___ 他多次提醒，大家还是忘了。', options:['尽管','按照','鉴于','以至于']}},
+                {section:'Đọc', skill:'vocab', q:'「顾虑」gần nghĩa nhất với từ nào?', options:['Tự tin','Lo ngại','Hào hứng','Chắc chắn'], answer:1, card:{hanzi:'顾虑', mean:'lo ngại, băn khoăn'}, en:{q:'What is closest in meaning to "顾虑"?', options:['Confident','Concerned','Excited','Certain']}},
+            ],
+            6: [
+                {section:'Nghe', skill:'grammar', audio:'这项政策的实施将对经济产生深远的影响。', q:'Câu vừa nghe nói về điều gì?', options:['Chính sách sẽ ảnh hưởng sâu rộng đến kinh tế','Chính sách sẽ bị huỷ bỏ','Kinh tế không bị ảnh hưởng','Chính sách chỉ ảnh hưởng ngắn hạn'], answer:0, card:{hanzi:'深远', mean:'sâu xa, sâu rộng'}, en:{q:'What is this sentence about?', options:['The policy will have a far-reaching impact on the economy','The policy will be cancelled','The economy is unaffected','The policy only has a short-term effect']}},
+                {section:'Nghe', skill:'vocab', audio:'他在学术界享有很高的声誉。', q:'「声誉」trong câu nghĩa gần nhất là gì?', options:['Danh tiếng','Tài sản','Chức vụ','Tuổi tác'], answer:0, card:{hanzi:'声誉', mean:'danh tiếng, uy tín'}, en:{q:'What is closest in meaning to "声誉" here?', options:['Reputation','Wealth','Position','Age']}},
+                {section:'Đọc', skill:'vocab', q:'「息息相关」có nghĩa là gì?', options:['Không liên quan','Có liên quan mật thiết','Đối lập nhau','Giống hệt nhau'], answer:1, card:{hanzi:'息息相关', mean:'liên quan mật thiết'}, en:{q:'What does "息息相关" mean?', options:['Unrelated','Closely related','Opposing each other','Identical']}},
+                {section:'Viết', skill:'grammar', q:'Sắp xếp đúng thứ tự: 1.这种现象 2.值得 3.我们 4.深思', options:['1-2-3-4','3-1-2-4','1-3-2-4','2-1-3-4'], answer:1, card:{hanzi:'值得深思', mean:'đáng để suy ngẫm'}, en:{q:'Put in correct order: 1.这种现象 2.值得 3.我们 4.深思', options:['1-2-3-4','3-1-2-4','1-3-2-4','2-1-3-4']}},
+                {section:'Đọc', skill:'grammar', q:'Chọn từ đúng: 他的观点 ___ 缺乏事实依据，令人难以信服。', options:['由于','鉴于','既然','毕竟'], answer:1, card:{hanzi:'鉴于', mean:'xét thấy, vì lẽ'}, en:{q:'Choose the correct word: 他的观点 ___ 缺乏事实依据，令人难以信服。', options:['由于','鉴于','既然','毕竟']}},
+                {section:'Nghe', skill:'grammar', audio:'无论从哪个角度来看，这个决定都是明智的。', q:'Câu này diễn tả điều gì?', options:['Quyết định sáng suốt dù nhìn từ góc độ nào','Quyết định sai lầm','Quyết định gây tranh cãi','Quyết định chưa chắc chắn'], answer:0, card:{hanzi:'明智', mean:'sáng suốt, khôn ngoan'}, en:{q:'What does this sentence express?', options:['The decision is wise from any angle','The decision is wrong','The decision is controversial','The decision is uncertain']}},
+                {section:'Đọc', skill:'vocab', q:'「潜移默化」nghĩa gần nhất là gì?', options:['Thay đổi đột ngột','Ảnh hưởng âm thầm, dần dần','Không có tác động','Phản đối mạnh mẽ'], answer:1, card:{hanzi:'潜移默化', mean:'ảnh hưởng âm thầm, dần dần'}, en:{q:'What is closest in meaning to "潜移默化"?', options:['Sudden change','Gradual, subtle influence','No effect','Strong opposition']}},
+                {section:'Viết', skill:'grammar', q:'Sắp xếp đúng: 1.这一发现 2.为 3.后续研究 4.奠定了基础', options:['1-2-3-4','1-3-2-4','2-1-3-4','1-4-2-3'], answer:0, card:{hanzi:'奠定基础', mean:'đặt nền móng, tạo nền tảng'}, en:{q:'Put in correct order: 1.这一发现 2.为 3.后续研究 4.奠定了基础', options:['1-2-3-4','1-3-2-4','2-1-3-4','1-4-2-3']}},
+            ],
+        };
+
+        let hskTestLevel = null, hskTestQueue = [], hskTestIdx = 0, hskTestAnswers = [], hskTestTimerId = null, hskTestSecondsLeft = 0, hskTestSelected = null;
+
+        function renderHskTestIntro() {
+            const box = document.getElementById('hsktest-intro');
+            if(!box) return;
+            box.innerHTML = Object.keys(HSK_TEST_FORMAT).map(lv => {
+                const fmt = HSK_TEST_FORMAT[lv];
+                const officialTotalMin = fmt.sections.reduce((s,x)=>s+x.m,0);
+                const secTxt = fmt.sections.map(s => currentLang==='en' ? `${s.n==='Nghe'?'Listening':s.n==='Đọc'?'Reading':'Writing'} ${s.c}q/${s.m}min` : `${s.n} ${s.c} câu/${s.m}p`).join(' · ');
+                const qCount = (HSK_TEST_BANK[lv]||[]).length;
+                const realFmtLabel = currentLang==='en' ? 'Real format:' : 'Format thật:';
+                const totalLabel = currentLang==='en' ? `Real total time: ~${officialTotalMin} min` : `Tổng thời gian thật: ~${officialTotalMin} phút`;
+                const mockLabel = currentLang==='en' ? `📝 Mock test: ${qCount} questions, same real-exam pace` : `📝 Đề rút gọn: ${qCount} câu, cùng nhịp độ thời gian thật`;
+                const startLabel = currentLang==='en' ? 'Start Mock Test' : 'Bắt đầu thi thử';
+                return `
+                <div class="bg-pastel-mint/40 border-4 border-dark rounded-2xl p-4 shadow-brutal-sm flex flex-col">
+                    <h3 class="text-xl font-extrabold mb-1">HSK ${lv}</h3>
+                    <p class="text-xs font-bold text-slate-500 mb-1">${realFmtLabel} ${secTxt}</p>
+                    <p class="text-xs font-bold text-slate-500 mb-3">${totalLabel}</p>
+                    <p class="text-sm font-bold text-dark mb-4 mt-auto">${mockLabel}</p>
+                    <button onclick="startHskTest('${lv}')" class="w-full bg-dark text-white border-2 border-dark py-2 rounded-xl font-bold btn-brutal">${startLabel}</button>
+                </div>`;
+            }).join('');
+        }
+
+        function startHskTest(level) {
+            hskTestLevel = level;
+            hskTestQueue = [...HSK_TEST_BANK[level]];
+            hskTestIdx = 0;
+            hskTestAnswers = [];
+            hskTestSelected = null;
+
+            const fmt = HSK_TEST_FORMAT[level];
+            const officialCount = fmt.sections.reduce((s,x)=>s+x.c,0);
+            const officialMin = fmt.sections.reduce((s,x)=>s+x.m,0);
+            const paceSec = (officialMin*60)/officialCount;
+            hskTestSecondsLeft = Math.max(60, Math.round(paceSec * hskTestQueue.length));
+
+            document.getElementById('hsktest-intro').classList.add('hidden');
+            document.getElementById('hsktest-report').classList.add('hidden');
+            document.getElementById('hsktest-exam').classList.remove('hidden');
+
+            clearInterval(hskTestTimerId);
+            hskTestTimerId = setInterval(tickHskTimer, 1000);
+            renderHskQuestion();
+            addPoint('Bắt đầu đề thi thử HSK');
+        }
+
+        function formatHskTime(sec) {
+            const m = Math.floor(sec/60), s = sec%60;
+            return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        }
+        function tickHskTimer() {
+            hskTestSecondsLeft--;
+            const el = document.getElementById('hsktest-timer');
+            if(el) el.innerText = formatHskTime(Math.max(0,hskTestSecondsLeft));
+            if(hskTestSecondsLeft <= 0) { clearInterval(hskTestTimerId); submitHskTest(); }
+        }
+        function speakHsk(text) {
+            if(!window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = 'zh-CN'; u.rate = 0.85;
+            window.speechSynthesis.speak(u);
+        }
+
+        function renderHskQuestion() {
+            const q = hskTestQueue[hskTestIdx];
+            const t = currentLang==='en' && q.en ? q.en : q;
+            hskTestSelected = null;
+            document.getElementById('hsktest-progress').innerText = currentLang==='en'
+                ? `Question ${hskTestIdx+1}/${hskTestQueue.length} · ${q.section==='Nghe'?'Listening':q.section==='Đọc'?'Reading':'Writing'}`
+                : `Câu ${hskTestIdx+1}/${hskTestQueue.length} · ${q.section}`;
+            document.getElementById('hsktest-timer').innerText = formatHskTime(Math.max(0,hskTestSecondsLeft));
+            const isLast = hskTestIdx === hskTestQueue.length - 1;
+            const listenLabel = currentLang==='en' ? '🔊 Listen to question' : '🔊 Nghe câu hỏi';
+            const nextLabel = currentLang==='en' ? (isLast ? 'Submit' : 'Next question →') : (isLast ? 'Nộp bài' : 'Câu tiếp theo →');
+            document.getElementById('hsktest-qbox').innerHTML = `
+                ${q.audio ? `<button onclick="speakHsk('${q.audio.replace(/'/g,"\\'")}')" class="mb-3 flex items-center gap-2 bg-pastel-blue border-2 border-dark px-4 py-2 rounded-xl font-bold btn-brutal">${listenLabel}</button>` : ''}
+                <p class="font-bold text-lg mb-4">${t.q}</p>
+                <div id="hsktest-options" class="space-y-2 mb-5">
+                    ${t.options.map((op,i) => `<button onclick="selectHskAnswer(${i})" id="hsktest-opt-${i}" class="w-full text-left border-2 border-dark rounded-xl px-4 py-2 font-semibold bg-white hover:bg-pastel-yellow btn-brutal">${op}</button>`).join('')}
+                </div>
+                <button id="hsktest-next-btn" onclick="nextHskQuestion()" disabled class="w-full bg-dark text-white border-2 border-dark py-2 rounded-xl font-bold btn-brutal opacity-40">${nextLabel}</button>
+            `;
+        }
+        function selectHskAnswer(i) {
+            hskTestSelected = i;
+            document.querySelectorAll('#hsktest-options button').forEach((b,idx) => {
+                b.className = 'w-full text-left border-2 border-dark rounded-xl px-4 py-2 font-semibold btn-brutal ' + (idx===i ? 'bg-pastel-pink' : 'bg-white hover:bg-pastel-yellow');
+            });
+            const nextBtn = document.getElementById('hsktest-next-btn');
+            nextBtn.disabled = false;
+            nextBtn.classList.remove('opacity-40');
+        }
+        function nextHskQuestion() {
+            hskTestAnswers.push(hskTestSelected);
+            if(hskTestIdx < hskTestQueue.length - 1) { hskTestIdx++; renderHskQuestion(); }
+            else { clearInterval(hskTestTimerId); submitHskTest(); }
+        }
+
+        function submitHskTest() {
+            clearInterval(hskTestTimerId);
+            while(hskTestAnswers.length < hskTestQueue.length) hskTestAnswers.push(null);
+
+            const wrong = [];
+            let correctCount = 0, vocabWrong = 0, vocabTotal = 0, grammarWrong = 0, grammarTotal = 0;
+            hskTestQueue.forEach((q, i) => {
+                const isVocab = q.skill === 'vocab';
+                if(isVocab) vocabTotal++; else grammarTotal++;
+                if(hskTestAnswers[i] === q.answer) correctCount++;
+                else { wrong.push(q); if(isVocab) vocabWrong++; else grammarWrong++; }
+            });
+
+            const total = hskTestQueue.length;
+            const pct = Math.round((correctCount/total)*100);
+            const isEn = currentLang==='en';
+            let advice;
+            if(wrong.length === 0) advice = isEn ? "Excellent! You got every question right — ready to try a higher level! 🎉" : "Xuất sắc luôn! Bạn không sai câu nào cả — đã sẵn sàng thử sức cấp cao hơn rồi đó! 🎉";
+            else if(vocabWrong >= grammarWrong) advice = isEn
+                ? `You missed more <b>Vocabulary</b> questions (${vocabWrong}/${vocabTotal}) than Grammar (${grammarWrong}/${grammarTotal}). Review new words in the Dictionary and Foundation sections before retaking the test! 📖`
+                : `Mình thấy bạn sai nhiều ở phần <b>Từ vựng</b> (${vocabWrong}/${vocabTotal} câu) hơn Ngữ pháp (${grammarWrong}/${grammarTotal} câu). Hãy ôn lại các từ mới ở mục Từ điển và Nền tảng trước khi thi lại nhé! 📖`;
+            else advice = isEn
+                ? `You missed more <b>Grammar</b> questions (${grammarWrong}/${grammarTotal}) than Vocabulary (${vocabWrong}/${vocabTotal}). Pay attention to the sentence patterns below and practice them again! ✏️`
+                : `Mình thấy bạn sai nhiều ở phần <b>Ngữ pháp</b> (${grammarWrong}/${grammarTotal} câu) hơn Từ vựng (${vocabWrong}/${vocabTotal} câu). Hãy chú ý các cấu trúc câu đã sai bên dưới và luyện lại nhé! ✏️`;
+
+            document.getElementById('hsktest-exam').classList.add('hidden');
+            const reportBox = document.getElementById('hsktest-report');
+            reportBox.classList.remove('hidden');
+            reportBox.innerHTML = `
+                <h3 class="text-2xl font-extrabold mb-1">${isEn?'HSK '+hskTestLevel+' Result 🏅':'Kết quả HSK '+hskTestLevel+' 🏅'}</h3>
+                <p class="font-bold text-slate-600 mb-4">${isEn ? `${correctCount}/${total} correct (${pct}%)` : `Đúng ${correctCount}/${total} câu (${pct}%)`}</p>
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="bg-pastel-blue/30 border-2 border-dark rounded-xl p-3 text-center">
+                        <p class="font-extrabold text-sm">${isEn?'Vocabulary':'Từ vựng'}</p>
+                        <p class="font-black text-xl">${vocabTotal-vocabWrong}/${vocabTotal}</p>
+                    </div>
+                    <div class="bg-pastel-orange/30 border-2 border-dark rounded-xl p-3 text-center">
+                        <p class="font-extrabold text-sm">${isEn?'Grammar':'Ngữ pháp'}</p>
+                        <p class="font-black text-xl">${grammarTotal-grammarWrong}/${grammarTotal}</p>
+                    </div>
+                </div>
+                <div class="bg-pastel-pink/30 border-2 border-dark rounded-xl p-3 mb-4">
+                    <p class="font-extrabold text-sm mb-1">🐼 ${isEn?'Tiểu Hưng analysis:':'Tiểu Hưng phân tích:'}</p>
+                    <p class="text-sm text-slate-700">${advice}</p>
+                </div>
+                ${wrong.length ? `
+                <div class="mb-4">
+                    <p class="font-extrabold text-sm mb-2">${isEn?'Questions to review:':'Các câu cần ôn lại:'}</p>
+                    <div class="space-y-2 max-h-48 overflow-y-auto no-scrollbar">
+                        ${wrong.map(w => `<div class="border-2 border-dark rounded-xl p-2 text-sm"><b>${w.card.hanzi}</b> — ${w.card.mean} <span class="text-xs text-slate-400">(${w.skill==='vocab'?(isEn?'Vocabulary':'Từ vựng'):(isEn?'Grammar':'Ngữ pháp')})</span></div>`).join('')}
+                    </div>
+                </div>
+                <button onclick="createFlashcardsFromWrongAnswers()" class="w-full bg-pastel-purple border-2 border-dark py-2 rounded-xl font-bold btn-brutal mb-2">${isEn?'📓 Create Flashcards from mistakes':'📓 Tạo Flashcard ôn lỗi sai'}</button>
+                ` : ''}
+                <button onclick="document.getElementById('hsktest-report').classList.add('hidden'); document.getElementById('hsktest-intro').classList.remove('hidden'); renderHskTestIntro();" class="w-full bg-white border-2 border-dark py-2 rounded-xl font-bold btn-brutal">${isEn?'← Choose another level':'← Chọn cấp độ khác'}</button>
+            `;
+            window._hskWrongCache = wrong;
+            addPoint('Hoàn thành đề thi thử HSK');
+        }
+
+        function createFlashcardsFromWrongAnswers() {
+            const wrong = window._hskWrongCache || [];
+            if(!wrong.length) return;
+            wrong.forEach(w => {
+                if(!personalFlashcards.some(p => p.hanzi === w.card.hanzi)) {
+                    personalFlashcards.push({ hanzi: w.card.hanzi, pinyin: '', mean: w.card.mean });
+                }
+            });
+            switchTab('flashcards');
+            filterFC('mine');
+            addPoint('Tạo Flashcard ôn lỗi sai HSK');
+        }
+
         // --- 7. GÓC CỦA TÔI ---
         function renderVocab() {
             document.getElementById('list-vocab').innerHTML = myVocab.map((v,i) => `
@@ -1978,7 +2249,10 @@
             "Kinh tế": "Economy",
             "Phát triển": "Develop",
             "Ảnh hưởng": "Influence",
-            "Phức tạp": "Complex"
+            "Phức tạp": "Complex",
+            "Luyện thi HSK": "HSK Test Practice",
+            "Luyện Thi HSK 📝": "HSK Test Practice 📝",
+            "Đề thi thử rút gọn, mô phỏng đúng cấu trúc & nhịp độ thời gian của đề thi HSK thật. Làm xong, AI Tiểu Hưng sẽ phân tích lỗ hổng Từ vựng/Ngữ pháp và tự tạo Flashcard ôn lại cho bạn!": "A shortened mock test that mirrors the real HSK exam structure & timing. After you submit, AI Tiểu Hưng will analyze your Vocabulary/Grammar gaps and auto-build a Flashcard set for you to review!"
         };
 
         function translateNode(node, lang) {
@@ -2044,6 +2318,8 @@
             if (typeof renderHSKVocab === 'function') renderHSKVocab();
             if (typeof searchDict === 'function' && document.getElementById('dict-search') && document.getElementById('dict-search').value) searchDict();
             if (typeof setWriteMode === 'function' && typeof writeMode !== 'undefined') setWriteMode(writeMode);
+            if (typeof renderHskTestIntro === 'function' && window.hskTestInit) renderHskTestIntro();
+            if (typeof renderHskQuestion === 'function' && document.getElementById('hsktest-exam') && !document.getElementById('hsktest-exam').classList.contains('hidden') && hskTestQueue.length) renderHskQuestion();
         }
 
         // Init App
